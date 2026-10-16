@@ -1,4 +1,4 @@
-# Python
+# Python Bytecode & Builds
 __pycache__/
 *.py[cod]
 *$py.class
@@ -7,28 +7,39 @@ dist/
 build/
 .eggs/
 
-# Environments
+# Virtual Environments
 .venv/
 env/
 venv/
 ENV/
 
-# Testing & Cache
+# Testing & Coverage
 .pytest_cache/
 .coverage
 htmlcov/
+*.log
 
-# Datasets (large raw data)
+# Large Datasets & Archives
 data/
 *.zip
 *.tar.gz
+*.bag
 
-# IDE
+# Transient Run Outputs & Trajectory Dumps
+results/trajectories/
+results/plots/
+results/*_telemetry.rrd
+*.tum
+*.csv
+
+# Streamlit Local Cache
+.streamlit/
+
+# IDE & OS Metadata
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
 .DS_Store
 Thumbs.db
+desktop.ini
