@@ -1,7 +1,10 @@
 # VIO Failure-Mode Stress Lab & 3D ESKF Debugger (`vio-stress-lab`)
 
+[![CI Verification](https://github.com/Tanishk756/vio-stress-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Tanishk756/vio-stress-lab/actions/workflows/ci.yml)
+
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 [![Tested on EuRoC](https://img.shields.io/badge/Dataset-EuRoC%20MAV-green.svg)](https://projects.asl.ethz.ch/datasets/euroc-mav/)
 [![Visualizer: Rerun](https://img.shields.io/badge/Visualizer-Rerun%20SDK-black.svg)](https://rerun.io/)
 [![Benchmark: evo](https://img.shields.io/badge/Evaluation-evo%20SLAM-orange.svg)](https://github.com/michaelgrupp/evo)
