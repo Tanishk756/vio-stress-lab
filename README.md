@@ -79,7 +79,7 @@ $$P \leftarrow G P^+ G^\top, \quad \text{where } G_{\theta\theta} = I_3 - \frac{
 
 ### 1. Installation
 ```bash
-git clone https://github.com/your-username/vio-stress-lab.git
+git clone https://github.com/Tanishk756/vio-stress-lab.git
 cd vio-stress-lab
 pip install -e .
 ```
