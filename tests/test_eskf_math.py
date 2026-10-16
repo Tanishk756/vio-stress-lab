@@ -189,3 +189,35 @@ def test_stationary_zero_drift_propagation():
     np.testing.assert_allclose(p, p0, atol=1e-12)
     np.testing.assert_allclose(v, v0, atol=1e-12)
     np.testing.assert_allclose(q, q0, atol=1e-12)
+
+
+def test_zero_velocity_update_zupt():
+    """Verify that Zero-Velocity Update (ZUPT) locks velocity drift and reduces covariance."""
+    from vio_lab.eskf import Eskf, EskfConfig
+
+    # Filter with velocity drift
+    filt = Eskf(
+        init_v=np.array([0.35, -0.20, 0.15]),
+        config=EskfConfig(init_vel_cov=0.1)
+    )
+    v_init_norm = np.linalg.norm(filt.v)
+    cov_v_before = np.trace(filt.P[3:6, 3:6])
+
+    # Apply ZUPT
+    filt.update_zero_velocity(vel_meas_std=0.01)
+
+    v_after_norm = np.linalg.norm(filt.v)
+    cov_v_after = np.trace(filt.P[3:6, 3:6])
+
+    # Velocity must shrink substantially towards zero
+    assert v_after_norm < 0.05
+    assert v_after_norm < v_init_norm * 0.2
+    # Velocity covariance must strictly decrease
+    assert cov_v_after < cov_v_before
+
+    # Verify symmetry and positive definiteness
+    sym_err = np.max(np.abs(filt.P - filt.P.T))
+    assert sym_err < 1e-12
+    eigvals = np.linalg.eigvalsh(filt.P)
+    assert np.all(eigvals > 0)
+

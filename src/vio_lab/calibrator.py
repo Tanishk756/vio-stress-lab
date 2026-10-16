@@ -276,3 +276,42 @@ class AugmentedEskf:
         eigvals = np.maximum(eigvals, 1e-12)
         radii = 3.0 * np.sqrt(eigvals)
         return radii, eigvecs
+
+    def update_zero_velocity(self, vel_meas_std: float = 0.01) -> None:
+        """Perform 3-DOF Zero-Velocity Update (ZUPT) on 22-state augmented filter."""
+        r_v = -self.v
+        H_v = np.zeros((3, 22), dtype=np.float64)
+        H_v[0:3, 3:6] = np.eye(3)
+
+        R_v = (vel_meas_std ** 2) * np.eye(3)
+        S = H_v @ self.P @ H_v.T + R_v
+        S = 0.5 * (S + S.T)
+
+        try:
+            S_inv = np.linalg.inv(S)
+        except np.linalg.LinAlgError:
+            return
+
+        K = self.P @ H_v.T @ S_inv
+        delta_x = K @ r_v
+
+        self.p += delta_x[0:3]
+        self.v += delta_x[3:6]
+        dq = so3_exp_quat(delta_x[6:9])
+        self.q = quat_normalize(quat_mult(self.q, dq))
+        self.ba += delta_x[9:12]
+        self.bg += delta_x[12:15]
+        self.p_bc += delta_x[15:18]
+        dq_bc = so3_exp_quat(delta_x[18:21])
+        self.q_bc = quat_normalize(quat_mult(self.q_bc, dq_bc))
+        self.td += float(delta_x[21])
+
+        G = np.eye(22, dtype=np.float64)
+        G[6:9, 6:9] = np.eye(3) - 0.5 * skew(delta_x[6:9])
+        G[18:21, 18:21] = np.eye(3) - 0.5 * skew(delta_x[18:21])
+
+        IKH = np.eye(22, dtype=np.float64) - K @ H_v
+        P_joseph = IKH @ self.P @ IKH.T + K @ R_v @ K.T
+        self.P = G @ P_joseph @ G.T
+        self.P = 0.5 * (self.P + self.P.T)
+

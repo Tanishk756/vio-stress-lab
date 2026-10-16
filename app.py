@@ -242,6 +242,16 @@ def main():
                     init_p_bc=dataset.T_bc0[:3, 3],
                     init_q_bc=rot_to_quat(dataset.T_bc0[:3, :3])
                 )
+            elif "MSCKF" in filter_mode:
+                filt = MsckfFilter(
+                    init_p=p0,
+                    init_v=v0,
+                    init_q=q0,
+                    init_ba=ba0,
+                    init_bg=bg0,
+                    T_bc=dataset.T_bc0,
+                    max_clones=8
+                )
             else:
                 filt = Eskf(
                     init_p=p0,
@@ -483,6 +493,38 @@ def main():
     fig_telemetry.update_yaxes(title_text="3-Sigma (m)", row=2, col=1, gridcolor="#2D2D44")
 
     st.plotly_chart(fig_telemetry, use_container_width=True)
+
+    # ==========================
+    # BIAS & CALIBRATION DYNAMICS
+    # ==========================
+    with st.expander("🔬 Online IMU Bias & Calibration Telemetry", expanded=False):
+        if len(records.ba_estimates) > 0:
+            ba_arr = np.array(records.ba_estimates)
+            bg_arr = np.array(records.bg_estimates)
+
+            fig_bias = make_subplots(
+                rows=1, cols=2,
+                subplot_titles=("Estimated Accelerometer Biases (m/s²)", "Estimated Gyroscope Biases (rad/s)")
+            )
+
+            fig_bias.add_trace(go.Scatter(x=timestamps, y=ba_arr[:, 0], mode='lines', name='b_ax', line=dict(color='#FF5252')), row=1, col=1)
+            fig_bias.add_trace(go.Scatter(x=timestamps, y=ba_arr[:, 1], mode='lines', name='b_ay', line=dict(color='#69F0AE')), row=1, col=1)
+            fig_bias.add_trace(go.Scatter(x=timestamps, y=ba_arr[:, 2], mode='lines', name='b_az', line=dict(color='#448AFF')), row=1, col=1)
+
+            fig_bias.add_trace(go.Scatter(x=timestamps, y=bg_arr[:, 0], mode='lines', name='b_gx', line=dict(color='#FF5252', dash='dot')), row=1, col=2)
+            fig_bias.add_trace(go.Scatter(x=timestamps, y=bg_arr[:, 1], mode='lines', name='b_gy', line=dict(color='#69F0AE', dash='dot')), row=1, col=2)
+            fig_bias.add_trace(go.Scatter(x=timestamps, y=bg_arr[:, 2], mode='lines', name='b_gz', line=dict(color='#448AFF', dash='dot')), row=1, col=2)
+
+            fig_bias.update_layout(
+                paper_bgcolor='#11111E',
+                plot_bgcolor='#1E1E2F',
+                font=dict(color='#E0E0E0'),
+                height=320,
+                margin=dict(l=40, r=40, b=30, t=30)
+            )
+            fig_bias.update_xaxes(title_text="Time (s)", gridcolor="#2D2D44")
+            fig_bias.update_yaxes(gridcolor="#2D2D44")
+            st.plotly_chart(fig_bias, use_container_width=True)
 
     # ==========================
     # TELEMETRY DATA EXPORT

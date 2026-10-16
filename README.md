@@ -43,6 +43,21 @@ Designed as a high-signal state-estimation portfolio asset demonstrating rigorou
    - **Instant Synthetic 6-DOF Generator:** Smooth 3D figure-eight Lissajous trajectory with 200 Hz IMU (random walk biases) and 20 Hz stereo projection for instant offline testing in $< 10$ seconds without downloading 2 GB datasets.
    - **EuRoC MAV ASL Format:** Native parsing of `mav0/imu0`, `mav0/cam0`, `mav0/cam1`, and ground-truth estimates (`MH_01_easy`).
 
+6. **22-State Online Spatial & Temporal Calibrator:**
+   - Online estimation of 6-DOF camera-IMU extrinsics $(p_{bc}, q_{bc})$ and hardware clock trigger delay $t_d$.
+   - Exact analytical Jacobians verified against central finite differences to $< 10^{-7}$.
+
+7. **Multi-State Constraint Kalman Filter (MSCKF):**
+   - Sliding-window camera clone states with linear SVD multi-view triangulation.
+   - Complete QR nullspace projection ($Q_2^\top H_f = 0$) eliminating 3D landmarks from state covariance without storing feature positions.
+
+8. **Zero-Velocity Updates (ZUPT):**
+   - 3-DOF velocity measurement update ($\mathbf{v} = \mathbf{0}$) with Joseph-form covariance reset for locking velocity drift during stationary coasting or hover.
+
+9. **Interactive Streamlit Studio & Degrader Suite:**
+   - Web application with dynamic fault sliders (blackout window, motion blur kernel, bias shock magnitude, time delay).
+   - 3D interactive Plotly visualization, $\pm 3\sigma$ covariance envelope tracking, and instant TUM / CSV telemetry downloads.
+
 ---
 
 ## 📊 Benchmark Scorecard & Results

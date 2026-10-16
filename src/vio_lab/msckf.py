@@ -347,3 +347,76 @@ class MsckfFilter:
         self.P = 0.5 * (self.P + self.P.T)
 
         return True
+
+    def update_pose(
+        self,
+        T_wb_meas: np.ndarray,
+        R_cov: np.ndarray,
+        chi2_threshold: Optional[float] = None
+    ) -> tuple[bool, float]:
+        """Pose measurement update on the IMU nominal state of the MSCKF."""
+        if chi2_threshold is None:
+            chi2_threshold = self.config.chi2_threshold_6dof
+
+        p_meas = T_wb_meas[:3, 3]
+        R_meas = T_wb_meas[:3, :3]
+
+        r_p = p_meas - self.p
+        R_k = self.R
+        delta_R = R_k.T @ R_meas
+        r_theta = so3_log(delta_R)
+        r = np.concatenate([r_p, r_theta])
+
+        total_dim = self.P.shape[0]
+        H = np.zeros((6, total_dim), dtype=np.float64)
+        H[0:3, 0:3] = np.eye(3)
+        H[3:6, 6:9] = np.eye(3)
+
+        S = H @ self.P @ H.T + R_cov
+        S = 0.5 * (S + S.T)
+
+        try:
+            S_inv = np.linalg.inv(S)
+            d2 = float(r.T @ S_inv @ r)
+        except np.linalg.LinAlgError:
+            return False, 999.0
+
+        if d2 > chi2_threshold:
+            return False, d2
+
+        K = self.P @ H.T @ S_inv
+        delta_x = K @ r
+
+        self.p += delta_x[0:3]
+        self.v += delta_x[3:6]
+        dq = so3_exp_quat(delta_x[6:9])
+        self.q = quat_normalize(quat_mult(self.q, dq))
+        self.ba += delta_x[9:12]
+        self.bg += delta_x[12:15]
+
+        for idx, c in enumerate(self.clones):
+            c_start = 15 + idx * 6
+            c.p += delta_x[c_start:c_start + 3]
+            dq_c = so3_exp_quat(delta_x[c_start + 3:c_start + 6])
+            c.q = quat_normalize(quat_mult(c.q, dq_c))
+
+        G = np.eye(total_dim, dtype=np.float64)
+        G[6:9, 6:9] = np.eye(3) - 0.5 * skew(delta_x[6:9])
+        for idx in range(len(self.clones)):
+            c_start = 15 + idx * 6
+            G[c_start + 3:c_start + 6, c_start + 3:c_start + 6] = np.eye(3) - 0.5 * skew(delta_x[c_start + 3:c_start + 6])
+
+        IKH = np.eye(total_dim, dtype=np.float64) - K @ H
+        P_joseph = IKH @ self.P @ IKH.T + K @ R_cov @ K.T
+        self.P = G @ P_joseph @ G.T
+        self.P = 0.5 * (self.P + self.P.T)
+
+        return True, d2
+
+    def get_3sigma_position_ellipsoid(self) -> tuple[np.ndarray, np.ndarray]:
+        """Compute the 3-sigma position uncertainty semi-axes and rotation matrix."""
+        P_pos = self.P[0:3, 0:3]
+        eigenvalues, eigenvectors = np.linalg.eigh(P_pos)
+        eigenvalues = np.maximum(eigenvalues, 1e-12)
+        radii = 3.0 * np.sqrt(eigenvalues)
+        return radii, eigenvectors

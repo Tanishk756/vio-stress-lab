@@ -123,5 +123,24 @@ def test_online_extrinsic_calibration_convergence():
     # Check that estimated p_bc converged towards true_p_bc
     extrinsic_err = np.linalg.norm(filter.p_bc - true_p_bc)
     print(f"\nInitial extrinsic error: {np.linalg.norm(true_p_bc):.4f} m")
-    print(f"Final estimated p_bc: {filter.p_bc}, error: {extrinsic_err:.4f} m")
     assert extrinsic_err < 0.015, f"Extrinsic error {extrinsic_err:.4f}m exceeds 1.5 cm threshold"
+
+
+def test_augmented_eskf_zupt():
+    """Verify that ZUPT works on 22-state AugmentedEskf filter."""
+    filter = AugmentedEskf(
+        init_v=np.array([0.20, -0.15, 0.30]),
+        init_p_bc=np.array([0.05, 0.0, 0.0])
+    )
+    v_norm_before = np.linalg.norm(filter.v)
+    cov_v_before = np.trace(filter.P[3:6, 3:6])
+
+    filter.update_zero_velocity(vel_meas_std=0.01)
+
+    v_norm_after = np.linalg.norm(filter.v)
+    cov_v_after = np.trace(filter.P[3:6, 3:6])
+
+    assert v_norm_after < 0.05
+    assert cov_v_after < cov_v_before
+    assert np.all(np.linalg.eigvalsh(filter.P) > 0)
+
