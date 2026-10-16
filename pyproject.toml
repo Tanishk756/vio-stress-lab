@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vio-stress-lab"
+version = "0.1.0"
+description = "15-State Error-State Kalman Filter (ESKF) Stereo Visual-Inertial Odometry Pipeline with Degradation Stress-Testing Suite"
+authors = [{ name = "VIO Lab Team" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "opencv-python>=4.7.0",
+    "rerun-sdk>=0.15.0",
+    "evo>=1.25.0",
+    "matplotlib>=3.7.0",
+    "pyyaml>=6.0",
+    "pytest>=7.0.0"
+]
+
+[project.scripts]
+vio-experiment = "run_experiment:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["src"]
+
