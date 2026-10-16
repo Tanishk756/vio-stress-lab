@@ -101,15 +101,21 @@ This generates:
 - `results/ape_comparison.png` (Comparison plots across all scenarios)
 - `results/vio_stress_demo.rrd` (Full 3D multimodal telemetry recording)
 
-### 4. Visualize in Rerun Viewer
+### 4. Interactive Web UI & Degrader Studio (Streamlit)
+Launch the interactive web application to inject sensor faults in real-time, inspect 3D trajectories, and track $\pm 3\sigma$ covariance bounds:
+```bash
+streamlit run app.py
+```
+
+### 5. Visualize in Rerun Viewer
 ```bash
 # Launch interactive viewer with the demo recording:
 rerun results/vio_stress_demo.rrd
 ```
 
-### 5. Running on EuRoC MAV (`MH_01_easy`)
+### 6. Running on EuRoC MAV (`MH_01_easy`)
 ```bash
-# Download and extract official EuRoC dataset
+# Download and extract official EuRoC dataset (with automated fallback)
 python scripts/download_euroc_sample.py --download
 
 # Run pipeline on EuRoC
@@ -122,6 +128,7 @@ python run_experiment.py --euroc-path data/MH_01_easy --save-rrd
 
 ```text
 vio-stress-lab/
+├── app.py                          # Interactive Streamlit Degrader Studio & 3D Web UI
 ├── configs/
 │   └── euroc_mh01.yaml             # Sensor extrinsics, camera matrices, IMU noise densities
 ├── scripts/
@@ -131,6 +138,8 @@ vio-stress-lab/
 │       ├── se3_math.py             # SO(3)/SE(3) Lie group, Rodrigues exp/log, Hamilton quaternions
 │       ├── dataset.py              # Priority-queue multiplexer (Synthetic 6-DOF + EuRoC ASL)
 │       ├── eskf.py                 # 15-state ESKF, midpoint IMU propagation, Joseph update
+│       ├── calibrator.py           # 22-state online camera-IMU extrinsics and delay estimation
+│       ├── msckf.py                # Multi-State Constraint Kalman Filter with QR nullspace projection
 │       ├── frontend.py             # Stereo KLT circular flow, GFTT bucketing, PnP RANSAC
 │       ├── degradation.py          # Sensor fault injection: blackouts, blur, bias steps, jitter
 │       ├── pipeline.py             # High-level pipeline coordinator & telemetry recorder
@@ -138,6 +147,8 @@ vio-stress-lab/
 │       └── evaluate.py             # evo trajectory evaluation, TUM export, benchmark reporting
 ├── tests/
 │   ├── test_eskf_math.py           # Finite-difference Jacobian checks (<1e-8) and SO(3) roundtrips
+│   ├── test_calibrator.py          # 22-state calibration observability and convergence tests
+│   ├── test_msckf.py               # MSCKF state cloning, QR nullspace property, and multi-view update
 │   ├── test_dataset.py             # Dataset multiplexer verification
 │   ├── test_integration.py         # Full synthetic convergence verification (<0.01m RMSE)
 │   └── test_degradation.py         # Fault injection and 3-second blackout bridge verification

@@ -17,7 +17,9 @@ dependencies = [
     "evo>=1.25.0",
     "matplotlib>=3.7.0",
     "pyyaml>=6.0",
-    "pytest>=7.0.0"
+    "pytest>=7.0.0",
+    "streamlit>=1.30.0",
+    "plotly>=5.18.0"
 ]
 
 [project.scripts]
