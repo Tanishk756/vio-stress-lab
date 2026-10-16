@@ -258,3 +258,21 @@ class AugmentedEskf:
         self.P = 0.5 * (self.P + self.P.T)
 
         return True, d2
+
+    def update_pose(
+        self,
+        T_wb_meas: np.ndarray,
+        R_cov: np.ndarray,
+        chi2_threshold: Optional[float] = None
+    ) -> tuple[bool, float]:
+        """VioPipeline compatibility adapter: converts body pose T_wb to camera pose T_wc."""
+        T_wc_meas = T_wb_meas @ self.T_bc
+        return self.update_camera_pose(T_wc_meas, R_cov, chi2_threshold=chi2_threshold)
+
+    def get_3sigma_position_ellipsoid(self) -> tuple[np.ndarray, np.ndarray]:
+        """Compute 3-sigma semi-axes radii and orientation rotation matrix from position covariance."""
+        P_p = self.P[0:3, 0:3]
+        eigvals, eigvecs = np.linalg.eigh(P_p)
+        eigvals = np.maximum(eigvals, 1e-12)
+        radii = 3.0 * np.sqrt(eigvals)
+        return radii, eigvecs

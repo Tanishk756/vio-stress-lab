@@ -221,15 +221,36 @@ def main():
             else:
                 dataset = SyntheticVioDataset(duration_s=duration_s, seed=42)
 
-            # Build pipeline
-            init_gt = dataset.gt_samples[0]
-            eskf = Eskf(
-                init_p=init_gt.p,
-                init_v=init_gt.v,
-                init_q=init_gt.q,
-                init_ba=init_gt.ba,
-                init_bg=init_gt.bg
-            )
+            # Build filter according to selected mode
+            gt_samples = dataset.gt_samples
+            if gt_samples:
+                init_gt = gt_samples[0]
+                p0, v0, q0 = init_gt.p.copy(), init_gt.v.copy(), init_gt.q.copy()
+                ba0, bg0 = init_gt.ba.copy(), init_gt.bg.copy()
+            else:
+                p0, v0 = np.zeros(3), np.zeros(3)
+                q0 = np.array([0.0, 0.0, 0.0, 1.0])
+                ba0, bg0 = np.zeros(3), np.zeros(3)
+
+            if "22-State" in filter_mode:
+                filt = AugmentedEskf(
+                    init_p=p0,
+                    init_v=v0,
+                    init_q=q0,
+                    init_ba=ba0,
+                    init_bg=bg0,
+                    init_p_bc=dataset.T_bc0[:3, 3],
+                    init_q_bc=rot_to_quat(dataset.T_bc0[:3, :3])
+                )
+            else:
+                filt = Eskf(
+                    init_p=p0,
+                    init_v=v0,
+                    init_q=q0,
+                    init_ba=ba0,
+                    init_bg=bg0
+                )
+
             frontend = StereoKltFrontend(
                 K=dataset.K,
                 baseline=dataset.baseline,
@@ -239,7 +260,7 @@ def main():
             )
             fault_engine = FaultInjectionEngine(degradation_cfg)
             pipeline = VioPipeline(
-                eskf=eskf,
+                eskf=filt,
                 frontend=frontend,
                 degradation_hook=fault_engine.process_event
             )
@@ -247,10 +268,15 @@ def main():
             pipeline.imu_only_bg = np.zeros(3)
 
             # Run stream
-            for ev in dataset.events():
+            events_gen = dataset.events(max_seconds=duration_s) if isinstance(dataset, EurocAslDataset) else dataset.events()
+            for ev in events_gen:
                 pipeline.process_event(ev)
 
             records = pipeline.records
+            if len(records.timestamps) < 2:
+                st.error("No valid frames were processed from dataset.")
+                return
+
             scenario_name = "custom_stress"
             metrics = evaluate_trajectory_record(records, scenario_name=scenario_name)
             elapsed_time = time.time() - start_wall_time
@@ -260,7 +286,8 @@ def main():
                 "metrics": metrics,
                 "elapsed": elapsed_time,
                 "degradation_cfg": degradation_cfg,
-                "duration": duration_s
+                "duration": duration_s,
+                "filter_mode": filter_mode
             }
 
     # Fetch results from session state

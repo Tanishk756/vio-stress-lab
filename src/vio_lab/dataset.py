@@ -312,6 +312,27 @@ class EurocAslDataset:
         if not self.imu_csv.exists():
             raise FileNotFoundError(f"EuRoC IMU CSV not found at {self.imu_csv}")
 
+        # Standard EuRoC cam0/cam1 intrinsics and extrinsics
+        self.K = np.array([
+            [458.654, 0.0, 367.215],
+            [0.0, 437.283, 248.375],
+            [0.0, 0.0, 1.0]
+        ], dtype=np.float64)
+        self.baseline = 0.11007
+        self.T_bc0 = np.array([
+            [0.01486554, -0.99988093, 0.0041403, -0.02164015],
+            [0.99955725, 0.01496721, 0.02571553, -0.06467699],
+            [-0.02577444, 0.00375619, 0.99966073, 0.00981073],
+            [0.0, 0.0, 0.0, 1.0]
+        ], dtype=np.float64)
+        self._gt_samples: Optional[list[GroundTruthSample]] = None
+
+    @property
+    def gt_samples(self) -> list[GroundTruthSample]:
+        if self._gt_samples is None:
+            self._gt_samples = self.load_ground_truth()
+        return self._gt_samples
+
     def load_ground_truth(self) -> list[GroundTruthSample]:
         """Load ground truth samples into a list if available."""
         samples: list[GroundTruthSample] = []
@@ -380,6 +401,8 @@ class EurocAslDataset:
             heapq.heappush(pq, (t, 1, "cam", (path_l, path_r)))
 
         t_start = pq[0][0] if pq else 0.0
+        gt_list = self.gt_samples
+        gt_times = np.array([g.t for g in gt_list]) if gt_list else None
 
         while pq:
             t, _, ev_type, data = heapq.heappop(pq)
@@ -394,4 +417,9 @@ class EurocAslDataset:
                 img_l = cv2.imread(str(path_l), cv2.IMREAD_GRAYSCALE)
                 img_r = cv2.imread(str(path_r), cv2.IMREAD_GRAYSCALE) if path_r else img_l
                 if img_l is not None and img_r is not None:
-                    yield StereoFrame(t=t, img_l=img_l, img_r=img_r)
+                    T_gt = None
+                    if gt_times is not None and len(gt_times) > 0:
+                        idx = int(np.clip(np.searchsorted(gt_times, t), 0, len(gt_times) - 1))
+                        if abs(gt_times[idx] - t) < 0.05:
+                            T_gt = gt_list[idx].T_wb
+                    yield StereoFrame(t=t, img_l=img_l, img_r=img_r, T_wb_gt=T_gt)
